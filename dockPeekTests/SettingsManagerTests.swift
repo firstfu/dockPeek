@@ -1,0 +1,57 @@
+//
+//  SettingsManagerTests.swift
+//  dockPeekTests
+//
+
+import Testing
+import Foundation
+@testable import dockPeek
+
+@Suite("SettingsManager Tests")
+struct SettingsManagerTests {
+    @Test("Default values are correct")
+    func defaultValues() {
+        let defaults = UserDefaults(suiteName: "test-settings-defaults")!
+        defaults.removePersistentDomain(forName: "test-settings-defaults")
+        let manager = SettingsManager(defaults: defaults)
+
+        #expect(manager.isEnabled == true)
+        #expect(manager.thumbnailWidth == 200.0)
+        #expect(manager.launchAtLogin == false)
+    }
+
+    @Test("Values persist across instances")
+    func persistence() {
+        let suiteName = "test-settings-persistence"
+        let defaults = UserDefaults(suiteName: suiteName)!
+        defaults.removePersistentDomain(forName: suiteName)
+
+        let manager1 = SettingsManager(defaults: defaults)
+        manager1.isEnabled = false
+        manager1.thumbnailWidth = 250.0
+
+        let manager2 = SettingsManager(defaults: defaults)
+        #expect(manager2.isEnabled == false)
+        #expect(manager2.thumbnailWidth == 250.0)
+
+        defaults.removePersistentDomain(forName: suiteName)
+    }
+
+    @Test("Thumbnail width clamped to valid range")
+    func thumbnailWidthClamping() {
+        let defaults = UserDefaults(suiteName: "test-settings-clamp")!
+        defaults.removePersistentDomain(forName: "test-settings-clamp")
+        let manager = SettingsManager(defaults: defaults)
+
+        manager.thumbnailWidth = 50.0
+        #expect(manager.thumbnailWidth == 150.0)
+
+        manager.thumbnailWidth = 500.0
+        #expect(manager.thumbnailWidth == 300.0)
+
+        manager.thumbnailWidth = 225.0
+        #expect(manager.thumbnailWidth == 225.0)
+
+        defaults.removePersistentDomain(forName: "test-settings-clamp")
+    }
+}
