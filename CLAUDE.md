@@ -27,23 +27,28 @@ xcodebuild -project dockPeek.xcodeproj -scheme dockPeek -only-testing:dockPeekTe
 
 ## Architecture
 
-Menu Bar app (`LSUIElement = YES`) with no Dock icon. Uses `@NSApplicationDelegateAdaptor` pattern.
+Menu Bar app (`LSUIElement = YES`) with no Dock icon. Uses `@NSApplicationDelegateAdaptor` pattern with SwiftUI `MenuBarExtra` for the menu bar icon.
 
 ### Module Dependency Flow
 
 ```
-AppDelegate (orchestrator)
-├── PermissionManager  → checks Accessibility permission, shows OnboardingView
-├── DockWatcher        → monitors Dock hover via Accessibility API + global mouse events
-├── WindowManager      → fetches window list (CGWindowListCopyWindowInfo) + thumbnails (ScreenCaptureKit)
-├── PreviewPanel       → floating NSPanel wrapping PreviewContentView (SwiftUI)
-└── SettingsManager    → UserDefaults persistence (isEnabled, thumbnailWidth, launchAtLogin)
+dockPeekApp (@main, SwiftUI App)
+├── MenuBarExtra       → SwiftUI scene providing deterministic menu bar icon
+│   └── MenuBarMenu    → SwiftUI View: Enable toggle, SettingsLink, Quit
+├── Settings scene     → SettingsView
+└── AppDelegate (orchestrator, via @NSApplicationDelegateAdaptor)
+    ├── PermissionManager  → checks Accessibility permission, shows OnboardingView
+    ├── DockWatcher        → monitors Dock hover via Accessibility API + global mouse events
+    ├── WindowManager      → fetches window list (CGWindowListCopyWindowInfo) + thumbnails (ScreenCaptureKit)
+    ├── PreviewPanel       → floating NSPanel wrapping PreviewContentView (SwiftUI)
+    └── SettingsManager    → UserDefaults persistence (isEnabled, thumbnailWidth, launchAtLogin)
 ```
 
 ### Key Files
 
-- **`dockPeekApp.swift`** — `@main` entry, `Settings` scene with `SettingsView`
-- **`AppDelegate.swift`** — Menu Bar StatusItem, orchestrates all components
+- **`dockPeekApp.swift`** — `@main` entry, `MenuBarExtra` + `Settings` scenes
+- **`MenuBarMenu.swift`** — SwiftUI View for MenuBarExtra dropdown: Enable toggle, SettingsLink, Quit
+- **`AppDelegate.swift`** — orchestrates Dock watching, window management, and onboarding
 - **`DockWatcher.swift`** — Core: `AXUIElementCopyElementAtPosition` for Dock item detection, 150ms debounce
 - **`WindowManager.swift`** — `CGWindowListCopyWindowInfo` for window list, `SCScreenshotManager` for thumbnails, AX API for window actions (activate/close/quit)
 - **`PreviewPanel.swift`** — `NSPanel(.nonactivatingPanel, .borderless)` at `.floating` level with fade animations

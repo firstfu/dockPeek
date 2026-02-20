@@ -6,69 +6,30 @@
 import AppKit
 import SwiftUI
 
+@MainActor
 final class AppDelegate: NSObject, NSApplicationDelegate {
-    private var statusItem: NSStatusItem!
     let settings = SettingsManager()
-    private let permissionManager = PermissionManager()
+    let permissionManager = PermissionManager()
     private let windowManager = WindowManager()
     private lazy var previewPanel = PreviewPanel(windowManager: windowManager)
     private lazy var dockWatcher = DockWatcher()
     private var onboardingWindow: NSWindow?
-    private var enabledMenuItem: NSMenuItem!
     private var permissionCheckTimer: Timer?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
-        setupMenuBar()
+        settings.onEnabledChanged = { [weak self] enabled in
+            if enabled {
+                self?.startWatching()
+            } else {
+                self?.stopWatching()
+            }
+        }
 
         if permissionManager.isAccessibilityGranted {
             startWatching()
         } else {
             showOnboarding()
         }
-    }
-
-    // MARK: - Menu Bar
-
-    private func setupMenuBar() {
-        statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
-
-        if let button = statusItem.button {
-            button.image = NSImage(systemSymbolName: "rectangle.on.rectangle", accessibilityDescription: "dockPeek")
-        }
-
-        let menu = NSMenu()
-
-        enabledMenuItem = NSMenuItem(title: "Enable dockPeek", action: #selector(toggleEnabled), keyEquivalent: "")
-        enabledMenuItem.target = self
-        enabledMenuItem.state = settings.isEnabled ? .on : .off
-        menu.addItem(enabledMenuItem)
-
-        menu.addItem(NSMenuItem.separator())
-
-        let settingsItem = NSMenuItem(title: "Settings...", action: #selector(openSettings), keyEquivalent: ",")
-        settingsItem.target = self
-        menu.addItem(settingsItem)
-
-        menu.addItem(NSMenuItem.separator())
-        menu.addItem(NSMenuItem(title: "Quit dockPeek", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q"))
-
-        statusItem.menu = menu
-    }
-
-    @objc private func toggleEnabled() {
-        settings.isEnabled.toggle()
-        enabledMenuItem.state = settings.isEnabled ? .on : .off
-
-        if settings.isEnabled {
-            startWatching()
-        } else {
-            stopWatching()
-        }
-    }
-
-    @objc private func openSettings() {
-        NSApp.activate(ignoringOtherApps: true)
-        NSApp.sendAction(Selector(("showSettingsWindow:")), to: nil, from: nil)
     }
 
     // MARK: - Onboarding
@@ -103,7 +64,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     // MARK: - Dock Watching
 
-    private func startWatching() {
+    func startWatching() {
         guard permissionManager.isAccessibilityGranted else { return }
 
         dockWatcher.onHoverApp = { [weak self] pid, appName, iconPosition in
@@ -117,7 +78,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         dockWatcher.start()
     }
 
-    private func stopWatching() {
+    func stopWatching() {
         dockWatcher.stop()
         previewPanel.dismiss()
     }

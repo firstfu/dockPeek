@@ -16,8 +16,13 @@ final class SettingsManager {
         static let launchAtLogin = "dockPeek.launchAtLogin"
     }
 
+    var onEnabledChanged: ((Bool) -> Void)?
+
     var isEnabled: Bool {
-        didSet { defaults.set(isEnabled, forKey: Keys.isEnabled) }
+        didSet {
+            defaults.set(isEnabled, forKey: Keys.isEnabled)
+            onEnabledChanged?(isEnabled)
+        }
     }
 
     var thumbnailWidth: CGFloat {
