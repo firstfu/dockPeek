@@ -16,7 +16,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var onboardingWindow: NSWindow?
     private var permissionCheckTimer: Timer?
 
+    override init() {
+        print("[dockPeek] AppDelegate.init() called")
+        super.init()
+    }
+
     func applicationDidFinishLaunching(_ notification: Notification) {
+        print("[dockPeek] applicationDidFinishLaunching called")
         settings.onEnabledChanged = { [weak self] enabled in
             if enabled {
                 self?.startWatching()
