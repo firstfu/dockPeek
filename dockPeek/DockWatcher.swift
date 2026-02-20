@@ -17,6 +17,10 @@ final class DockWatcher {
     private var lastHoveredPID: pid_t = 0
     private var isActive = false
 
+    deinit {
+        stop()
+    }
+
     func start() {
         guard !isActive else { return }
         isActive = true
@@ -136,11 +140,17 @@ final class DockWatcher {
         var iconCenter = NSPoint.zero
 
         if AXUIElementCopyAttributeValue(element, kAXPositionAttribute as CFString, &positionValue) == .success,
-           AXUIElementCopyAttributeValue(element, kAXSizeAttribute as CFString, &sizeValue) == .success {
+           AXUIElementCopyAttributeValue(element, kAXSizeAttribute as CFString, &sizeValue) == .success,
+           let posRef = positionValue,
+           let sizeRef = sizeValue,
+           CFGetTypeID(posRef) == AXValueGetTypeID(),
+           CFGetTypeID(sizeRef) == AXValueGetTypeID() {
+            let posAXValue = posRef as! AXValue
+            let sizeAXValue = sizeRef as! AXValue
             var point = CGPoint.zero
             var size = CGSize.zero
-            AXValueGetValue(positionValue as! AXValue, .cgPoint, &point)
-            AXValueGetValue(sizeValue as! AXValue, .cgSize, &size)
+            AXValueGetValue(posAXValue, .cgPoint, &point)
+            AXValueGetValue(sizeAXValue, .cgSize, &size)
             iconCenter = NSPoint(x: point.x + size.width / 2, y: point.y + size.height)
         }
 

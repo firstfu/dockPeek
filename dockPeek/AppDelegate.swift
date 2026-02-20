@@ -8,13 +8,14 @@ import SwiftUI
 
 final class AppDelegate: NSObject, NSApplicationDelegate {
     private var statusItem: NSStatusItem!
-    private let settings = SettingsManager()
+    let settings = SettingsManager()
     private let permissionManager = PermissionManager()
     private let windowManager = WindowManager()
     private lazy var previewPanel = PreviewPanel(windowManager: windowManager)
     private lazy var dockWatcher = DockWatcher()
     private var onboardingWindow: NSWindow?
     private var enabledMenuItem: NSMenuItem!
+    private var permissionCheckTimer: Timer?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         setupMenuBar()
@@ -85,6 +86,19 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
         onboardingWindow = window
         permissionManager.startPolling()
+
+        // Check permission state periodically
+        permissionCheckTimer = Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { [weak self] _ in
+            guard let self else { return }
+            self.permissionManager.checkAccessibility()
+            if self.permissionManager.isAccessibilityGranted {
+                self.permissionCheckTimer?.invalidate()
+                self.permissionCheckTimer = nil
+                self.onboardingWindow?.close()
+                self.onboardingWindow = nil
+                self.startWatching()
+            }
+        }
     }
 
     // MARK: - Dock Watching

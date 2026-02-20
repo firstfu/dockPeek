@@ -16,12 +16,12 @@ final class PermissionManager {
     }
 
     func checkAccessibility() {
-        let options = [kAXTrustedCheckOptionPrompt.takeRetainedValue(): false] as CFDictionary
+        let options = [kAXTrustedCheckOptionPrompt.takeUnretainedValue(): false] as CFDictionary
         isAccessibilityGranted = AXIsProcessTrustedWithOptions(options)
     }
 
     func requestAccessibility() {
-        let options = [kAXTrustedCheckOptionPrompt.takeRetainedValue(): true] as CFDictionary
+        let options = [kAXTrustedCheckOptionPrompt.takeUnretainedValue(): true] as CFDictionary
         _ = AXIsProcessTrustedWithOptions(options)
         startPolling()
     }

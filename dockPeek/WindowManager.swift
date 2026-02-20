@@ -8,17 +8,18 @@ import CoreGraphics
 import ScreenCaptureKit
 
 final class WindowManager {
-    private let thumbnailWidth: CGFloat
 
-    init(thumbnailWidth: CGFloat = 200.0) {
-        self.thumbnailWidth = thumbnailWidth
-    }
-
-    func fetchWindows(for pid: pid_t, thumbnailWidth: CGFloat? = nil) async -> [WindowInfo] {
-        let targetWidth = thumbnailWidth ?? self.thumbnailWidth
-
+    func fetchWindows(for pid: pid_t, thumbnailWidth: CGFloat) async -> [WindowInfo] {
         guard let windowList = CGWindowListCopyWindowInfo([.optionOnScreenOnly, .excludeDesktopElements], kCGNullWindowID) as? [[String: Any]] else {
             return []
+        }
+
+        // Fetch SCShareableContent once before the loop for performance
+        let availableContent: SCShareableContent?
+        do {
+            availableContent = try await SCShareableContent.excludingDesktopWindows(false, onScreenWindowsOnly: true)
+        } catch {
+            availableContent = nil
         }
 
         var results: [WindowInfo] = []
@@ -32,12 +33,9 @@ final class WindowManager {
                 continue
             }
 
-            guard let boundsDict = windowDict[kCGWindowBounds as String] as? [String: CGFloat],
-                  let x = boundsDict["X"],
-                  let y = boundsDict["Y"],
-                  let width = boundsDict["Width"],
-                  let height = boundsDict["Height"],
-                  width >= 50, height >= 50 else {
+            guard let boundsDict = windowDict[kCGWindowBounds as String] as? NSDictionary,
+                  let bounds = CGRect(dictionaryRepresentation: boundsDict as CFDictionary),
+                  bounds.width >= 50, bounds.height >= 50 else {
                 continue
             }
 
@@ -45,13 +43,12 @@ final class WindowManager {
                 continue
             }
 
-            let bounds = CGRect(x: x, y: y, width: width, height: height)
             let title = windowDict[kCGWindowName as String] as? String
 
-            let thumbnail = await captureThumbnail(windowID: windowID, targetWidth: targetWidth)
+            let thumbnail = await captureThumbnail(windowID: windowID, targetWidth: thumbnailWidth, availableContent: availableContent)
 
             let info = WindowInfo(
-                windowID: windowID,
+                id: windowID,
                 ownerPID: ownerPID,
                 title: title,
                 bounds: bounds,
@@ -63,9 +60,9 @@ final class WindowManager {
         return results
     }
 
-    private func captureThumbnail(windowID: CGWindowID, targetWidth: CGFloat) async -> NSImage? {
+    private func captureThumbnail(windowID: CGWindowID, targetWidth: CGFloat, availableContent: SCShareableContent?) async -> NSImage? {
         do {
-            let availableContent = try await SCShareableContent.excludingDesktopWindows(false, onScreenWindowsOnly: true)
+            guard let availableContent else { return nil }
 
             guard let scWindow = availableContent.windows.first(where: { $0.windowID == windowID }) else {
                 return nil
@@ -130,8 +127,10 @@ final class WindowManager {
 
             if axTitle == windowInfo.title || windows.count == 1 {
                 var closeButtonValue: CFTypeRef?
-                if AXUIElementCopyAttributeValue(window, kAXCloseButtonAttribute as CFString, &closeButtonValue) == .success {
-                    let closeButton = closeButtonValue as! AXUIElement
+                if AXUIElementCopyAttributeValue(window, kAXCloseButtonAttribute as CFString, &closeButtonValue) == .success,
+                   let closeRef = closeButtonValue,
+                   CFGetTypeID(closeRef) == AXUIElementGetTypeID() {
+                    let closeButton = closeRef as! AXUIElement
                     AXUIElementPerformAction(closeButton, kAXPressAction as CFString)
                 }
                 break

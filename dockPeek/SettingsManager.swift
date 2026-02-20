@@ -17,27 +17,26 @@ final class SettingsManager {
     }
 
     var isEnabled: Bool {
-        get { defaults.object(forKey: Keys.isEnabled) as? Bool ?? true }
-        set { defaults.set(newValue, forKey: Keys.isEnabled) }
+        didSet { defaults.set(isEnabled, forKey: Keys.isEnabled) }
     }
 
     var thumbnailWidth: CGFloat {
-        get {
-            let value = defaults.object(forKey: Keys.thumbnailWidth) as? CGFloat ?? 200.0
-            return min(max(value, 150.0), 300.0)
-        }
-        set {
-            let clamped = min(max(newValue, 150.0), 300.0)
+        didSet {
+            let clamped = min(max(thumbnailWidth, 150.0), 300.0)
+            if clamped != thumbnailWidth { thumbnailWidth = clamped }
             defaults.set(clamped, forKey: Keys.thumbnailWidth)
         }
     }
 
     var launchAtLogin: Bool {
-        get { defaults.bool(forKey: Keys.launchAtLogin) }
-        set { defaults.set(newValue, forKey: Keys.launchAtLogin) }
+        didSet { defaults.set(launchAtLogin, forKey: Keys.launchAtLogin) }
     }
 
     init(defaults: UserDefaults = .standard) {
         self.defaults = defaults
+        self.isEnabled = defaults.object(forKey: Keys.isEnabled) as? Bool ?? true
+        let rawWidth = defaults.object(forKey: Keys.thumbnailWidth) as? CGFloat ?? 200.0
+        self.thumbnailWidth = min(max(rawWidth, 150.0), 300.0)
+        self.launchAtLogin = defaults.bool(forKey: Keys.launchAtLogin)
     }
 }

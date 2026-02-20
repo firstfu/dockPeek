@@ -11,7 +11,7 @@ struct dockPeekApp: App {
 
     var body: some Scene {
         Settings {
-            SettingsView()
+            SettingsView(settings: appDelegate.settings)
         }
     }
 }
