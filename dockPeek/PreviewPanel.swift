@@ -10,6 +10,8 @@ final class PreviewPanel {
     private var panel: NSPanel?
     private let windowManager: WindowManager
     private var isVisible = false
+    private var mouseMonitor: Any?
+    private var monitorDelayItem: DispatchWorkItem?
 
     init(windowManager: WindowManager) {
         self.windowManager = windowManager
@@ -93,11 +95,14 @@ final class PreviewPanel {
 
         self.panel = panel
         isVisible = true
+        scheduleMouseMonitor()
     }
 
     func dismiss() {
         guard let panel = panel, isVisible else { return }
         isVisible = false
+        cancelScheduledMonitor()
+        stopMouseMonitor()
 
         NSAnimationContext.runAnimationGroup({ context in
             context.duration = 0.1
@@ -112,4 +117,53 @@ final class PreviewPanel {
     }
 
     var isPanelVisible: Bool { isVisible }
+
+    /// Check if the mouse cursor is within or near the preview panel.
+    /// Uses generous bottom padding to bridge the gap between the Dock and the panel.
+    func containsMouse() -> Bool {
+        guard let panel = panel, isVisible else { return false }
+        let mouseLocation = NSEvent.mouseLocation
+        let frame = panel.frame
+        let hitFrame = NSRect(
+            x: frame.origin.x - 20,
+            y: frame.origin.y - 40,
+            width: frame.width + 40,
+            height: frame.height + 50
+        )
+        return hitFrame.contains(mouseLocation)
+    }
+
+    private func scheduleMouseMonitor() {
+        cancelScheduledMonitor()
+        let item = DispatchWorkItem { [weak self] in
+            guard let self, self.isVisible else { return }
+            self.startMouseMonitor()
+        }
+        monitorDelayItem = item
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5, execute: item)
+    }
+
+    private func cancelScheduledMonitor() {
+        monitorDelayItem?.cancel()
+        monitorDelayItem = nil
+    }
+
+    private func startMouseMonitor() {
+        stopMouseMonitor()
+        mouseMonitor = NSEvent.addGlobalMonitorForEvents(matching: .mouseMoved) { [weak self] _ in
+            DispatchQueue.main.async {
+                guard let self, self.isVisible else { return }
+                if !self.containsMouse() {
+                    self.dismiss()
+                }
+            }
+        }
+    }
+
+    private func stopMouseMonitor() {
+        if let monitor = mouseMonitor {
+            NSEvent.removeMonitor(monitor)
+            mouseMonitor = nil
+        }
+    }
 }

@@ -85,7 +85,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
 
         dockWatcher.onHoverEnd = { [weak self] in
-            self?.previewPanel.dismiss()
+            guard let self else { return }
+            // Delay dismiss to give the mouse time to reach the preview panel
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                if self.previewPanel.containsMouse() {
+                    return
+                }
+                self.previewPanel.dismiss()
+            }
         }
 
         dockWatcher.start()

@@ -53,28 +53,27 @@ final class WindowManager {
             let title = windowDict[kCGWindowName as String] as? String
             let isOnScreen = windowDict[kCGWindowIsOnscreen as String] as? Bool ?? false
 
-            // Off-screen windows: must exist in SCShareableContent AND have a title.
-            // SC existence alone isn't enough — some apps (e.g. Spark) have helper windows
-            // that exist in SC but have nil titles, causing "Untitled Window" ghost cards.
-            // Real minimized windows (Chrome tabs, etc.) always have titles.
+            // Off-screen windows must exist in SCShareableContent to be considered minimized.
+            let scWindow = isOnScreen ? nil : availableContent?.windows.first(where: { $0.windowID == windowID })
+
             let isMinimized: Bool
             if !isOnScreen {
-                let scWindow = availableContent?.windows.first(where: { $0.windowID == windowID })
-                guard let scWindow else { continue }
-
-                let cgTitle = title
-                let scTitle = scWindow.title
-                let hasTitle = (cgTitle != nil && !cgTitle!.isEmpty) || (scTitle != nil && !scTitle!.isEmpty)
-                if !hasTitle {
-                    continue
-                }
-
+                guard scWindow != nil else { continue }
                 isMinimized = true
             } else {
                 isMinimized = false
             }
 
             let thumbnail = await captureThumbnail(windowID: windowID, targetWidth: thumbnailWidth, availableContent: availableContent, isMinimized: isMinimized)
+
+            // Ghost/helper windows (e.g. Spark): off-screen + no title + no thumbnail → skip.
+            // Real minimized windows without titles (e.g. Microsoft To Do) still produce thumbnails.
+            if isMinimized {
+                let hasTitle = (title != nil && !title!.isEmpty) || (scWindow?.title != nil && !scWindow!.title!.isEmpty)
+                if !hasTitle && thumbnail == nil {
+                    continue
+                }
+            }
 
             let info = WindowInfo(
                 id: windowID,
