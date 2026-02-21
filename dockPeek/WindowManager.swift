@@ -52,7 +52,23 @@ final class WindowManager {
 
             let title = windowDict[kCGWindowName as String] as? String
             let isOnScreen = windowDict[kCGWindowIsOnscreen as String] as? Bool ?? false
-            let isMinimized = !isOnScreen
+
+            // For off-screen windows, apply dual filter:
+            // 1. Must exist in SCShareableContent (excludes system helper/ghost windows)
+            // 2. Must be confirmed minimized via AX API
+            let isMinimized: Bool
+            if !isOnScreen {
+                let existsInSC = availableContent?.windows.contains(where: { $0.windowID == windowID }) ?? false
+                if !existsInSC {
+                    continue
+                }
+                isMinimized = Self.isWindowMinimized(pid: pid, windowTitle: title)
+                if !isMinimized {
+                    continue
+                }
+            } else {
+                isMinimized = false
+            }
 
             let thumbnail = await captureThumbnail(windowID: windowID, targetWidth: thumbnailWidth, availableContent: availableContent, isMinimized: isMinimized)
 
@@ -155,5 +171,40 @@ final class WindowManager {
     func quitApp(pid: pid_t) {
         guard let app = NSRunningApplication(processIdentifier: pid) else { return }
         app.terminate()
+    }
+
+    /// Check via AX API if any window with the given title is minimized for the specified PID.
+    private static func isWindowMinimized(pid: pid_t, windowTitle: String?) -> Bool {
+        let appElement = AXUIElementCreateApplication(pid)
+        var windowsValue: CFTypeRef?
+        guard AXUIElementCopyAttributeValue(appElement, kAXWindowsAttribute as CFString, &windowsValue) == .success,
+              let windows = windowsValue as? [AXUIElement] else {
+            return false
+        }
+
+        // Also check minimized windows (kAXWindows doesn't include them on some apps)
+        var minimizedWindows: [AXUIElement] = []
+        var minimizedValue: CFTypeRef?
+        if AXUIElementCopyAttributeValue(appElement, "AXMinimizedWindows" as CFString, &minimizedValue) == .success,
+           let minWins = minimizedValue as? [AXUIElement] {
+            minimizedWindows = minWins
+        }
+
+        let allWindows = windows + minimizedWindows
+        for window in allWindows {
+            var titleValue: CFTypeRef?
+            AXUIElementCopyAttributeValue(window, kAXTitleAttribute as CFString, &titleValue)
+            let axTitle = titleValue as? String
+
+            guard axTitle == windowTitle || (axTitle == nil && windowTitle == nil) else { continue }
+
+            var minValue: CFTypeRef?
+            if AXUIElementCopyAttributeValue(window, kAXMinimizedAttribute as CFString, &minValue) == .success,
+               let minimized = minValue as? Bool {
+                return minimized
+            }
+        }
+
+        return false
     }
 }

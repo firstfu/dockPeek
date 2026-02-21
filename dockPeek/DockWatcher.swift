@@ -195,7 +195,30 @@ final class DockWatcher {
 
         let runningApps = NSWorkspace.shared.runningApplications
 
-        // Exact match for .regular apps (most common case)
+        // Strategy 1: Match by bundle identifier via Dock item's URL attribute (most reliable)
+        var urlValue: CFTypeRef?
+        if AXUIElementCopyAttributeValue(element, kAXURLAttribute as CFString, &urlValue) == .success,
+           let urlRef = urlValue {
+            var appBundleID: String?
+            if let url = urlRef as? URL {
+                appBundleID = Bundle(url: url)?.bundleIdentifier
+            } else if let urlString = urlRef as? String, let url = URL(string: urlString) {
+                appBundleID = Bundle(url: url)?.bundleIdentifier
+            } else if CFGetTypeID(urlRef) == CFURLGetTypeID() {
+                let cfURL = urlRef as! CFURL
+                let url = cfURL as URL
+                appBundleID = Bundle(url: url)?.bundleIdentifier
+            }
+            if let bundleID = appBundleID,
+               let app = runningApps.first(where: {
+                   $0.bundleIdentifier == bundleID && !$0.isTerminated
+               }) {
+                logger.debug("resolveRunningApp: bundle ID match '\(title)' → '\(bundleID)' PID=\(app.processIdentifier)")
+                return (app.processIdentifier, title, iconCenter)
+            }
+        }
+
+        // Strategy 2: Exact name match for .regular apps
         if let app = runningApps.first(where: {
             $0.localizedName == title && !$0.isTerminated && $0.activationPolicy == .regular
         }) {
@@ -203,11 +226,20 @@ final class DockWatcher {
             return (app.processIdentifier, title, iconCenter)
         }
 
-        // Fallback: case-insensitive match across all activation policies
+        // Strategy 3: Case-insensitive name match
         if let app = runningApps.first(where: {
             $0.localizedName?.caseInsensitiveCompare(title) == .orderedSame && !$0.isTerminated
         }) {
             logger.debug("resolveRunningApp: case-insensitive match '\(title)' → '\(app.localizedName ?? "?")' PID=\(app.processIdentifier) policy=\(app.activationPolicy.rawValue)")
+            return (app.processIdentifier, title, iconCenter)
+        }
+
+        // Strategy 4: Prefix/contains match (e.g. Dock title "iTerm" vs localizedName "iTerm2")
+        if let app = runningApps.first(where: {
+            guard let name = $0.localizedName, !$0.isTerminated, $0.activationPolicy == .regular else { return false }
+            return name.localizedCaseInsensitiveContains(title) || title.localizedCaseInsensitiveContains(name)
+        }) {
+            logger.debug("resolveRunningApp: contains match '\(title)' → '\(app.localizedName ?? "?")' PID=\(app.processIdentifier)")
             return (app.processIdentifier, title, iconCenter)
         }
 
