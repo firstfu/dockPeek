@@ -13,7 +13,7 @@ final class WindowManager {
     private let logger = Logger(subsystem: "com.firstfu.com.dockPeek", category: "WindowManager")
 
     func fetchWindows(for pid: pid_t, thumbnailWidth: CGFloat) async -> [WindowInfo] {
-        guard let windowList = CGWindowListCopyWindowInfo([.optionOnScreenOnly, .excludeDesktopElements], kCGNullWindowID) as? [[String: Any]] else {
+        guard let windowList = CGWindowListCopyWindowInfo([.optionAll, .excludeDesktopElements], kCGNullWindowID) as? [[String: Any]] else {
             logger.warning("fetchWindows: CGWindowListCopyWindowInfo returned nil")
             return []
         }
@@ -23,7 +23,7 @@ final class WindowManager {
         // Fetch SCShareableContent once before the loop for performance
         let availableContent: SCShareableContent?
         do {
-            availableContent = try await SCShareableContent.excludingDesktopWindows(false, onScreenWindowsOnly: true)
+            availableContent = try await SCShareableContent.excludingDesktopWindows(false, onScreenWindowsOnly: false)
         } catch {
             logger.warning("fetchWindows: SCShareableContent failed: \(error.localizedDescription)")
             availableContent = nil
@@ -51,14 +51,17 @@ final class WindowManager {
             }
 
             let title = windowDict[kCGWindowName as String] as? String
+            let isOnScreen = windowDict[kCGWindowIsOnscreen as String] as? Bool ?? false
+            let isMinimized = !isOnScreen
 
-            let thumbnail = await captureThumbnail(windowID: windowID, targetWidth: thumbnailWidth, availableContent: availableContent)
+            let thumbnail = await captureThumbnail(windowID: windowID, targetWidth: thumbnailWidth, availableContent: availableContent, isMinimized: isMinimized)
 
             let info = WindowInfo(
                 id: windowID,
                 ownerPID: ownerPID,
                 title: title,
                 bounds: bounds,
+                isMinimized: isMinimized,
                 thumbnail: thumbnail
             )
             results.append(info)
@@ -68,7 +71,7 @@ final class WindowManager {
         return results
     }
 
-    private func captureThumbnail(windowID: CGWindowID, targetWidth: CGFloat, availableContent: SCShareableContent?) async -> NSImage? {
+    private func captureThumbnail(windowID: CGWindowID, targetWidth: CGFloat, availableContent: SCShareableContent?, isMinimized: Bool = false) async -> NSImage? {
         do {
             guard let availableContent else { return nil }
 
@@ -94,8 +97,7 @@ final class WindowManager {
             let cgImage = try await SCScreenshotManager.captureImage(contentFilter: filter, configuration: config)
 
             let size = NSSize(width: targetWidth, height: scaledHeight)
-            let image = NSImage(cgImage: cgImage, size: size)
-            return image
+            return NSImage(cgImage: cgImage, size: size)
         } catch {
             return nil
         }
@@ -116,6 +118,10 @@ final class WindowManager {
             let axTitle = titleValue as? String
 
             if axTitle == windowInfo.title || windows.count == 1 {
+                // Unminimize if the window is minimized
+                if windowInfo.isMinimized {
+                    AXUIElementSetAttributeValue(window, kAXMinimizedAttribute as CFString, false as CFTypeRef)
+                }
                 AXUIElementPerformAction(window, kAXRaiseAction as CFString)
                 break
             }

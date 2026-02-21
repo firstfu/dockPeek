@@ -96,6 +96,18 @@ struct WindowThumbnailCard: View {
                 .frame(width: thumbnailWidth, height: thumbnailHeight)
                 .clipShape(RoundedRectangle(cornerRadius: 6))
 
+                // Minimized window overlay indicator
+                if windowInfo.isMinimized {
+                    RoundedRectangle(cornerRadius: 6)
+                        .fill(.black.opacity(0.3))
+                        .frame(width: thumbnailWidth, height: thumbnailHeight)
+                        .overlay {
+                            Image(systemName: "arrow.down.right.and.arrow.up.left")
+                                .font(.system(size: 20, weight: .medium))
+                                .foregroundStyle(.white.opacity(0.8))
+                        }
+                }
+
                 if isHovered {
                     Button(action: { onClose?() }) {
                         Image(systemName: "xmark.circle.fill")

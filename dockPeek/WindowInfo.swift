@@ -10,6 +10,7 @@ struct WindowInfo: Identifiable {
     let ownerPID: pid_t
     let title: String?
     let bounds: CGRect
+    let isMinimized: Bool
     var thumbnail: NSImage?
 
     /// Computed alias for backward compatibility
@@ -20,11 +21,12 @@ struct WindowInfo: Identifiable {
         return title
     }
 
-    init(id: CGWindowID, ownerPID: pid_t, title: String?, bounds: CGRect, thumbnail: NSImage?) {
+    init(id: CGWindowID, ownerPID: pid_t, title: String?, bounds: CGRect, isMinimized: Bool = false, thumbnail: NSImage?) {
         self.id = id
         self.ownerPID = ownerPID
         self.title = title
         self.bounds = bounds
+        self.isMinimized = isMinimized
         self.thumbnail = thumbnail
     }
 }
