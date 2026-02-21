@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-dockPeek is a native macOS Menu Bar utility that shows window thumbnail previews when hovering over Dock icons. Built with Swift 5.0, SwiftUI, AppKit, and ScreenCaptureKit. Targets macOS 26.2 with Xcode 26.2.
+dockPeek is a native macOS Menu Bar utility that shows window thumbnail previews when hovering over Dock icons. Built with SwiftUI, AppKit, and ScreenCaptureKit. Targets macOS 26.2 with Xcode 26.2.
 
 ## Build & Test Commands
 
@@ -27,57 +27,62 @@ xcodebuild -project dockPeek.xcodeproj -scheme dockPeek -only-testing:dockPeekTe
 
 ## Architecture
 
-Menu Bar app (`LSUIElement = YES`) with no Dock icon. Uses `@NSApplicationDelegateAdaptor` pattern with SwiftUI `MenuBarExtra` for the menu bar icon.
+Menu Bar agent app (`LSUIElement = YES`) with no Dock icon.
 
 ### Module Dependency Flow
 
 ```
 dockPeekApp (@main, SwiftUI App)
-├── MenuBarExtra       → SwiftUI scene providing deterministic menu bar icon
+├── MenuBarExtra       → SwiftUI scene providing menu bar icon
 │   └── MenuBarMenu    → SwiftUI View: Enable toggle, SettingsLink, Quit
 ├── Settings scene     → SettingsView
 └── AppDelegate (orchestrator, via @NSApplicationDelegateAdaptor)
-    ├── PermissionManager  → checks Accessibility permission, shows OnboardingView
-    ├── DockWatcher        → monitors Dock hover via Accessibility API + global mouse events
-    ├── WindowManager      → fetches window list (CGWindowListCopyWindowInfo) + thumbnails (ScreenCaptureKit)
-    ├── PreviewPanel       → floating NSPanel wrapping PreviewContentView (SwiftUI)
-    └── SettingsManager    → UserDefaults persistence (isEnabled, thumbnailWidth, launchAtLogin)
+    ├── PermissionManager  → AXIsProcessTrustedWithOptions + 1s polling
+    ├── DockWatcher        → AXUIElementCopyElementAtPosition + global mouse events, 150ms debounce
+    ├── WindowManager      → CGWindowListCopyWindowInfo + SCScreenshotManager for thumbnails
+    ├── PreviewPanel       → floating NSPanel(.nonactivatingPanel, .borderless) with fade animations
+    └── SettingsManager    → @Observable + UserDefaults DI
 ```
 
-### Key Files
+### Data Flow
 
-- **`dockPeekApp.swift`** — `@main` entry, `MenuBarExtra` + `Settings` scenes
-- **`MenuBarMenu.swift`** — SwiftUI View for MenuBarExtra dropdown: Enable toggle, SettingsLink, Quit
-- **`AppDelegate.swift`** — orchestrates Dock watching, window management, and onboarding
-- **`DockWatcher.swift`** — Core: `AXUIElementCopyElementAtPosition` for Dock item detection, 150ms debounce
-- **`WindowManager.swift`** — `CGWindowListCopyWindowInfo` for window list, `SCScreenshotManager` for thumbnails, AX API for window actions (activate/close/quit)
-- **`PreviewPanel.swift`** — `NSPanel(.nonactivatingPanel, .borderless)` at `.floating` level with fade animations
-- **`PreviewContentView.swift`** — SwiftUI: horizontal scroll of `WindowThumbnailCard` with hover close buttons
-- **`PermissionManager.swift`** — `AXIsProcessTrustedWithOptions` + 1s polling timer
-- **`SettingsManager.swift`** — `@Observable` with `UserDefaults` DI (testable)
-- **`OnboardingView.swift`** / **`SettingsView.swift`** — SwiftUI settings and permission onboarding
+1. `DockWatcher` detects mouse near Dock via `NSEvent.addGlobalMonitorForEvents(.mouseMoved)`
+2. After 150ms debounce, queries `AXUIElementCopyElementAtPosition` on the Dock process
+3. Resolves AX element → running app name/PID via `NSWorkspace.shared.runningApplications`
+4. `AppDelegate.handleDockHover` calls `WindowManager.fetchWindows` (async)
+5. `WindowManager` filters `CGWindowListCopyWindowInfo` by PID, captures thumbnails via `SCScreenshotManager`
+6. `PreviewPanel.show` creates `NSPanel` wrapping `PreviewContentView` (SwiftUI) positioned above Dock icon
+
+### Key Patterns
+
+- **Callback-based communication**: `DockWatcher` → `AppDelegate` via `onHoverApp`/`onHoverEnd` closures; `SettingsManager` → `AppDelegate` via `onEnabledChanged`
+- **DI for testability**: `SettingsManager(defaults:)` accepts custom `UserDefaults` instance
+- **`@Observable` (Observation framework)**: Used by `SettingsManager` and `PermissionManager` — not Combine
+- **Window actions via AX API**: `WindowManager` handles activate (raise), close (press close button), quit via separate methods
 
 ### Xcode Project Structure
 
 Uses `PBXFileSystemSynchronizedRootGroup` — any `.swift` file placed in `dockPeek/` or `dockPeekTests/` is automatically included in the build. No manual pbxproj edits needed for source files.
 
-## Testing Structure
+## Testing
 
-- `dockPeekTests/` — Unit tests using Swift Testing framework (`import Testing`, `@Test`, `@Suite`)
-  - `WindowInfoTests` — model properties, displayTitle fallback
-  - `SettingsManagerTests` — defaults, persistence, clamping
+- **Framework**: Swift Testing (`import Testing`, `@Test`, `@Suite`) — not XCTest for unit tests
+- `dockPeekTests/` — `WindowInfoTests`, `SettingsManagerTests`
 - `dockPeekUITests/` — UI tests using XCTest
+- Tests use isolated `UserDefaults(suiteName:)` with cleanup via `removePersistentDomain`
 
-## Swift Concurrency Settings
+## Swift Concurrency
 
-- `SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor` — all types default to `@MainActor` isolation
-- `SWIFT_APPROACHABLE_CONCURRENCY = YES` — Swift 6 concurrency safety model enabled
+- `SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor` (app target only) — all types default to `@MainActor`
+- `SWIFT_APPROACHABLE_CONCURRENCY = YES` — Swift 6 concurrency safety
 - Use `nonisolated` explicitly for background work
+- `WindowManager.fetchWindows` is `async` — called via `Task { }` from `AppDelegate`
 
 ## Build Configuration
 
 - App Sandbox: **disabled** (required for Accessibility API + CGWindowList access)
 - Hardened Runtime: **enabled** (required for notarization)
 - `LSUIElement = YES` — hides from Dock, runs as Menu Bar agent app
-- Requires user-granted **Accessibility permission** for Dock monitoring and window operations
-- ScreenCaptureKit used for thumbnails (may require **Screen Recording permission** on macOS 15+)
+- Bundle ID: `com.firstfu.com.dockPeek`
+- Requires **Accessibility permission** for Dock monitoring and window operations
+- Requires **Screen Recording permission** for ScreenCaptureKit thumbnails
