@@ -4,12 +4,14 @@
 //
 
 import AppKit
+import os
 import SwiftUI
 
 @MainActor
 final class AppDelegate: NSObject, NSApplicationDelegate {
     let settings = SettingsManager()
     let permissionManager = PermissionManager()
+    private let logger = Logger(subsystem: "com.firstfu.com.dockPeek", category: "AppDelegate")
     private let windowManager = WindowManager()
     private lazy var previewPanel = PreviewPanel(windowManager: windowManager)
     private lazy var dockWatcher = DockWatcher()
@@ -17,12 +19,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var permissionCheckTimer: Timer?
 
     override init() {
-        print("[dockPeek] AppDelegate.init() called")
         super.init()
+        logger.info("AppDelegate.init() called")
     }
 
     func applicationDidFinishLaunching(_ notification: Notification) {
-        print("[dockPeek] applicationDidFinishLaunching called")
+        logger.info("applicationDidFinishLaunching: accessibility=\(self.permissionManager.isAccessibilityGranted), enabled=\(self.settings.isEnabled)")
         settings.onEnabledChanged = { [weak self] enabled in
             if enabled {
                 self?.startWatching()
@@ -71,7 +73,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     // MARK: - Dock Watching
 
     func startWatching() {
-        guard permissionManager.isAccessibilityGranted else { return }
+        guard permissionManager.isAccessibilityGranted else {
+            logger.warning("startWatching: accessibility not granted, aborting")
+            return
+        }
+
+        logger.info("startWatching: setting up DockWatcher callbacks and starting")
 
         dockWatcher.onHoverApp = { [weak self] pid, appName, iconPosition in
             self?.handleDockHover(pid: pid, appName: appName, iconPosition: iconPosition)
@@ -90,6 +97,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     private func handleDockHover(pid: pid_t, appName: String, iconPosition: NSPoint) {
+        logger.info("handleDockHover: '\(appName)' PID=\(pid)")
         Task {
             let windows = await windowManager.fetchWindows(
                 for: pid,
@@ -97,10 +105,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             )
 
             guard !windows.isEmpty else {
+                logger.debug("handleDockHover: no windows for '\(appName)', dismissing")
                 previewPanel.dismiss()
                 return
             }
 
+            logger.info("handleDockHover: showing \(windows.count) window(s) for '\(appName)'")
             previewPanel.show(
                 appName: appName,
                 windows: windows,

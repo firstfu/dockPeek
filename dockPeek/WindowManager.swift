@@ -5,20 +5,27 @@
 
 import AppKit
 import CoreGraphics
+import os
 import ScreenCaptureKit
 
 final class WindowManager {
 
+    private let logger = Logger(subsystem: "com.firstfu.com.dockPeek", category: "WindowManager")
+
     func fetchWindows(for pid: pid_t, thumbnailWidth: CGFloat) async -> [WindowInfo] {
         guard let windowList = CGWindowListCopyWindowInfo([.optionOnScreenOnly, .excludeDesktopElements], kCGNullWindowID) as? [[String: Any]] else {
+            logger.warning("fetchWindows: CGWindowListCopyWindowInfo returned nil")
             return []
         }
+
+        logger.debug("fetchWindows: PID=\(pid), total system windows=\(windowList.count)")
 
         // Fetch SCShareableContent once before the loop for performance
         let availableContent: SCShareableContent?
         do {
             availableContent = try await SCShareableContent.excludingDesktopWindows(false, onScreenWindowsOnly: true)
         } catch {
+            logger.warning("fetchWindows: SCShareableContent failed: \(error.localizedDescription)")
             availableContent = nil
         }
 
@@ -57,6 +64,7 @@ final class WindowManager {
             results.append(info)
         }
 
+        logger.info("fetchWindows: found \(results.count) window(s) for PID=\(pid)")
         return results
     }
 
