@@ -2,6 +2,10 @@
 //  DockWatcher.swift
 //  dockPeek
 //
+//  監測滑鼠在 Dock 上的懸停事件。透過全域 mouseMoved 事件監聽搭配
+//  AXUIElementCopyElementAtPosition 查詢 Dock 圖示，以 150ms debounce
+//  防止過度觸發，並將匹配到的 app 資訊透過 callback 回傳給 AppDelegate。
+//
 
 import AppKit
 import CoreGraphics

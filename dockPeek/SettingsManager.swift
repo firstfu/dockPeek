@@ -2,6 +2,9 @@
 //  SettingsManager.swift
 //  dockPeek
 //
+//  應用程式設定管理。使用 @Observable + UserDefaults 持久化使用者偏好設定，
+//  支援 DI 注入自訂 UserDefaults 實例以利測試。
+//
 
 import Foundation
 import Observation
@@ -12,9 +15,12 @@ final class SettingsManager {
 
     private enum Keys {
         static let isEnabled = "dockPeek.isEnabled"
-        static let thumbnailWidth = "dockPeek.thumbnailWidth"
+        static let previewScale = "dockPeek.previewScale"
         static let launchAtLogin = "dockPeek.launchAtLogin"
     }
+
+    private static let baseThumbnailWidth: CGFloat = 200.0
+    static let scaleRange: ClosedRange<CGFloat> = 0.5...2.0
 
     var onEnabledChanged: ((Bool) -> Void)?
 
@@ -25,12 +31,16 @@ final class SettingsManager {
         }
     }
 
-    var thumbnailWidth: CGFloat {
+    var previewScale: CGFloat {
         didSet {
-            let clamped = min(max(thumbnailWidth, 150.0), 300.0)
-            if clamped != thumbnailWidth { thumbnailWidth = clamped }
-            defaults.set(clamped, forKey: Keys.thumbnailWidth)
+            let clamped = min(max(previewScale, Self.scaleRange.lowerBound), Self.scaleRange.upperBound)
+            if clamped != previewScale { previewScale = clamped }
+            defaults.set(clamped, forKey: Keys.previewScale)
         }
+    }
+
+    var thumbnailWidth: CGFloat {
+        Self.baseThumbnailWidth * previewScale
     }
 
     var launchAtLogin: Bool {
@@ -40,8 +50,8 @@ final class SettingsManager {
     init(defaults: UserDefaults = .standard) {
         self.defaults = defaults
         self.isEnabled = defaults.object(forKey: Keys.isEnabled) as? Bool ?? true
-        let rawWidth = defaults.object(forKey: Keys.thumbnailWidth) as? CGFloat ?? 200.0
-        self.thumbnailWidth = min(max(rawWidth, 150.0), 300.0)
+        let rawScale = defaults.object(forKey: Keys.previewScale) as? CGFloat ?? 1.0
+        self.previewScale = min(max(rawScale, Self.scaleRange.lowerBound), Self.scaleRange.upperBound)
         self.launchAtLogin = defaults.bool(forKey: Keys.launchAtLogin)
     }
 }

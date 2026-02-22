@@ -2,6 +2,8 @@
 //  SettingsView.swift
 //  dockPeek
 //
+//  設定視窗的 SwiftUI 視圖。提供預覽縮放比例、開機自動啟動等偏好設定的 UI 介面。
+//
 
 import SwiftUI
 import ServiceManagement
@@ -29,8 +31,8 @@ struct SettingsView: View {
 
             Section("Appearance") {
                 VStack(alignment: .leading) {
-                    Text("Thumbnail Width: \(Int(settings.thumbnailWidth))pt")
-                    Slider(value: $settings.thumbnailWidth, in: 150...300, step: 10)
+                    Text("Preview Size: \(String(format: "%.1fx", settings.previewScale))")
+                    Slider(value: $settings.previewScale, in: SettingsManager.scaleRange, step: 0.1)
                 }
             }
 

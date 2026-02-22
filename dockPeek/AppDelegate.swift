@@ -2,6 +2,10 @@
 //  AppDelegate.swift
 //  dockPeek
 //
+//  應用程式主協調器。負責初始化並串接 DockWatcher、WindowManager、
+//  PreviewPanel、PermissionManager、SettingsManager 等模組，
+//  處理 Dock hover 事件與 preview panel 的顯示/消失邏輯。
+//
 
 import AppKit
 import os
@@ -130,6 +134,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 appName: appName,
                 windows: windows,
                 thumbnailWidth: settings.thumbnailWidth,
+                previewScale: settings.previewScale,
                 at: iconPosition
             )
         }

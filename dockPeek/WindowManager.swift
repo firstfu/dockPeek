@@ -2,6 +2,10 @@
 //  WindowManager.swift
 //  dockPeek
 //
+//  視窗資訊擷取與操作管理。透過 CGWindowListCopyWindowInfo 取得指定 PID 的視窗清單，
+//  以 SCScreenshotManager 擷取縮圖，並提供 activate、close、quit 等視窗操作功能。
+//  內含多層過濾邏輯以排除 ghost/helper 視窗。
+//
 
 import AppKit
 import CoreGraphics

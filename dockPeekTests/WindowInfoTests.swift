@@ -2,6 +2,8 @@
 //  WindowInfoTests.swift
 //  dockPeekTests
 //
+//  WindowInfo 資料模型的單元測試。驗證屬性儲存與 Identifiable 一致性。
+//
 
 import Testing
 @testable import dockPeek

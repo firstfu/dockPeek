@@ -2,7 +2,7 @@
 //  dockPeekUITests.swift
 //  dockPeekUITests
 //
-//  Created by firstfu on 2026/2/20.
+//  UI 測試。驗證應用程式的使用者介面互動流程。
 //
 
 import XCTest

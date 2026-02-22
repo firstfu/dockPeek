@@ -2,6 +2,9 @@
 //  PermissionManager.swift
 //  dockPeek
 //
+//  無障礙權限管理。透過 AXIsProcessTrustedWithOptions 檢查權限狀態，
+//  並以 1 秒輪詢持續監測權限變更。
+//
 
 import AppKit
 import Observation

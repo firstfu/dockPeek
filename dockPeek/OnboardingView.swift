@@ -2,6 +2,9 @@
 //  OnboardingView.swift
 //  dockPeek
 //
+//  首次啟動引導視圖。引導使用者授予 Accessibility 權限，
+//  顯示權限說明與前往系統設定的操作按鈕。
+//
 
 import SwiftUI
 

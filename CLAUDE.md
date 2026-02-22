@@ -111,6 +111,18 @@ Uses `PBXFileSystemSynchronizedRootGroup` — any `.swift` file placed in `dockP
 - Use `nonisolated` explicitly for background work
 - `WindowManager.fetchWindows` is `async` — called via `Task { }` from `AppDelegate`
 
+## Code Style
+
+- **File Header Comment**: Every `.swift` file must include a descriptive header comment at the top, explaining the file's purpose and responsibility. Format:
+  ```swift
+  //
+  //  FileName.swift
+  //  dockPeek
+  //
+  //  簡短描述此檔案的職責與功能。
+  //
+  ```
+
 ## Build Configuration
 
 - App Sandbox: **disabled** (required for Accessibility API + CGWindowList access)

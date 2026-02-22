@@ -2,7 +2,7 @@
 //  dockPeekUITestsLaunchTests.swift
 //  dockPeekUITests
 //
-//  Created by firstfu on 2026/2/20.
+//  UI 啟動測試。驗證應用程式啟動流程與初始畫面截圖。
 //
 
 import XCTest

@@ -2,6 +2,9 @@
 //  PreviewPanel.swift
 //  dockPeek
 //
+//  浮動預覽面板管理。建立並控制 NSPanel（nonactivatingPanel + borderless），
+//  定位於 Dock 圖示上方顯示視窗縮圖，包含淡入/淡出動畫與滑鼠離開自動消失的監聽機制。
+//
 
 import AppKit
 import SwiftUI
@@ -21,6 +24,7 @@ final class PreviewPanel {
         appName: String,
         windows: [WindowInfo],
         thumbnailWidth: CGFloat,
+        previewScale: CGFloat,
         at point: NSPoint,
         onDismiss: (() -> Void)? = nil
     ) {
@@ -30,6 +34,7 @@ final class PreviewPanel {
             appName: appName,
             windows: windows,
             thumbnailWidth: thumbnailWidth,
+            previewScale: previewScale,
             onWindowClick: { [weak self] windowInfo in
                 self?.windowManager.activateWindow(windowInfo: windowInfo)
                 self?.dismiss()

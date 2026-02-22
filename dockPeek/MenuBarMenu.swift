@@ -2,6 +2,8 @@
 //  MenuBarMenu.swift
 //  dockPeek
 //
+//  Menu Bar 下拉選單視圖。提供啟用/停用切換、設定連結及退出按鈕。
+//
 
 import SwiftUI
 
