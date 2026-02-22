@@ -17,9 +17,9 @@ struct PreviewContentView: View {
     var onWindowClose: ((WindowInfo) -> Void)?
     var onQuitApp: (() -> Void)?
 
-    /// Dampened scale for fonts — grows at 40% of the overall scale rate
+    /// Dampened scale for fonts — grows at 15% of the overall scale rate
     private var fontScale: CGFloat {
-        1.0 + (previewScale - 1.0) * 0.4
+        1.0 + (previewScale - 1.0) * 0.15
     }
 
     var body: some View {
@@ -80,9 +80,9 @@ struct WindowThumbnailCard: View {
     var onClose: (() -> Void)?
     @State private var isHovered = false
 
-    /// Dampened scale for fonts — grows at 40% of the overall scale rate
+    /// Dampened scale for fonts — grows at 15% of the overall scale rate
     private var fontScale: CGFloat {
-        1.0 + (previewScale - 1.0) * 0.4
+        1.0 + (previewScale - 1.0) * 0.15
     }
 
     private var thumbnailHeight: CGFloat {
