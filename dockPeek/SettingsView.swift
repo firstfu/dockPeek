@@ -55,6 +55,13 @@ struct SettingsView: View {
         }
         .formStyle(.grouped)
         .frame(width: 350, height: 280)
+        .onAppear {
+            NSApp.setActivationPolicy(.regular)
+            NSApp.activate()
+        }
+        .onDisappear {
+            NSApp.setActivationPolicy(.accessory)
+        }
     }
 
     private func updateLaunchAtLogin(enabled: Bool) {

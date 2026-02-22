@@ -122,9 +122,11 @@ final class WindowManager {
             let scale = targetWidth / originalWidth
             let scaledHeight = originalHeight * scale
 
+            let backingScale = NSScreen.main?.backingScaleFactor ?? 2.0
+
             let config = SCStreamConfiguration()
-            config.width = Int(targetWidth)
-            config.height = Int(scaledHeight)
+            config.width = Int(targetWidth * backingScale)
+            config.height = Int(scaledHeight * backingScale)
             config.scalesToFit = true
             config.showsCursor = false
 

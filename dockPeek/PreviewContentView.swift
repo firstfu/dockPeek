@@ -88,6 +88,7 @@ struct WindowThumbnailCard: View {
                     if let thumbnail = windowInfo.thumbnail {
                         Image(nsImage: thumbnail)
                             .resizable()
+                            .interpolation(.high)
                             .aspectRatio(contentMode: .fit)
                     } else {
                         Rectangle()
@@ -102,17 +103,6 @@ struct WindowThumbnailCard: View {
                 .frame(width: thumbnailWidth, height: thumbnailHeight)
                 .clipShape(RoundedRectangle(cornerRadius: 6 * previewScale))
 
-                // Minimized window overlay indicator
-                if windowInfo.isMinimized {
-                    RoundedRectangle(cornerRadius: 6 * previewScale)
-                        .fill(.black.opacity(0.3))
-                        .frame(width: thumbnailWidth, height: thumbnailHeight)
-                        .overlay {
-                            Image(systemName: "arrow.down.right.and.arrow.up.left")
-                                .font(.system(size: 20 * previewScale, weight: .medium))
-                                .foregroundStyle(.white.opacity(0.8))
-                        }
-                }
 
                 if isHovered {
                     Button(action: { onClose?() }) {
