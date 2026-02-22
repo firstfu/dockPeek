@@ -17,6 +17,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private lazy var dockWatcher = DockWatcher()
     private var onboardingWindow: NSWindow?
     private var permissionCheckTimer: Timer?
+    private var dismissWorkItem: DispatchWorkItem?
 
     override init() {
         super.init()
@@ -81,18 +82,21 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         logger.info("startWatching: setting up DockWatcher callbacks and starting")
 
         dockWatcher.onHoverApp = { [weak self] pid, appName, iconPosition in
+            self?.dismissWorkItem?.cancel()
+            self?.dismissWorkItem = nil
             self?.handleDockHover(pid: pid, appName: appName, iconPosition: iconPosition)
         }
 
         dockWatcher.onHoverEnd = { [weak self] in
             guard let self else { return }
-            // Delay dismiss to give the mouse time to reach the preview panel
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
-                if self.previewPanel.containsMouse() {
-                    return
-                }
+            self.dismissWorkItem?.cancel()
+            let item = DispatchWorkItem { [weak self] in
+                guard let self else { return }
+                if self.previewPanel.containsMouse() { return }
                 self.previewPanel.dismiss()
             }
+            self.dismissWorkItem = item
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.3, execute: item)
         }
 
         dockWatcher.start()
@@ -100,6 +104,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     func stopWatching() {
         dockWatcher.stop()
+        dismissWorkItem?.cancel()
+        dismissWorkItem = nil
         previewPanel.dismiss()
     }
 
@@ -118,6 +124,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             }
 
             logger.info("handleDockHover: showing \(windows.count) window(s) for '\(appName)'")
+            dismissWorkItem?.cancel()
+            dismissWorkItem = nil
             previewPanel.show(
                 appName: appName,
                 windows: windows,

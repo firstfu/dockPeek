@@ -58,7 +58,40 @@ dockPeekApp (@main, SwiftUI App)
 - **Callback-based communication**: `DockWatcher` → `AppDelegate` via `onHoverApp`/`onHoverEnd` closures; `SettingsManager` → `AppDelegate` via `onEnabledChanged`
 - **DI for testability**: `SettingsManager(defaults:)` accepts custom `UserDefaults` instance
 - **`@Observable` (Observation framework)**: Used by `SettingsManager` and `PermissionManager` — not Combine
-- **Window actions via AX API**: `WindowManager` handles activate (raise), close (press close button), quit via separate methods
+- **Window actions via AX API**: `WindowManager` handles activate (raise + unminimize), close (press AX close button), quit (`NSRunningApplication.terminate`)
+- **Logging**: All modules use `os.Logger` with subsystem `com.firstfu.com.dockPeek` and per-class category
+
+### Coordinate System Gotcha
+
+The codebase frequently converts between two coordinate systems:
+- **Cocoa** (NSPoint/NSWindow): origin at bottom-left of primary screen
+- **Quartz/Core Graphics** (AX API, CGWindowList): origin at top-left of primary screen
+
+Conversion formula: `quartzY = primaryScreenHeight - cocoaY`. This appears in `DockWatcher.queryDockItemAtMouse` (mouse → AX query) and `DockWatcher.resolveRunningApp` (AX position → NSPoint for panel positioning).
+
+### Ghost Window Filtering
+
+`WindowManager.fetchWindows` applies multi-layer filtering to exclude helper/ghost windows (e.g., Xcode toolbars, Spark background windows):
+- Layer must be `0`, minimum bounds `50×50`, alpha ≥ `0.01`
+- On-screen windows without a CG title → skipped (ghost/helper)
+- Off-screen windows must exist in `SCShareableContent` → treated as minimized
+- Off-screen windows with no title AND no capturable thumbnail → skipped
+
+### DockWatcher App Resolution
+
+`resolveRunningApp` uses 4 fallback strategies to match AX Dock elements to running apps:
+1. **Bundle ID via kAXURLAttribute** — most reliable, handles mismatched display names
+2. **Exact name match** — `localizedName == title` for `.regular` activation policy apps
+3. **Case-insensitive match** — catches capitalization differences
+4. **Prefix/contains match** — handles partial name mismatches (e.g., "iTerm" vs "iTerm2")
+
+### Dismissal Flow
+
+Panel dismissal uses a debounced `DispatchWorkItem` pattern in `AppDelegate`:
+- `onHoverEnd` schedules a 300ms delayed dismiss
+- Before dismissing, checks `PreviewPanel.containsMouse()` (uses a generous 60pt bottom padding to bridge the Dock-to-panel gap)
+- New `onHoverApp` cancels any pending dismiss
+- `PreviewPanel` also runs its own mouse monitor (started 500ms after show) for independent dismissal when cursor leaves the panel area
 
 ### Xcode Project Structure
 

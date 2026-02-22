@@ -126,9 +126,9 @@ final class PreviewPanel {
         let frame = panel.frame
         let hitFrame = NSRect(
             x: frame.origin.x - 20,
-            y: frame.origin.y - 40,
+            y: frame.origin.y - 60,
             width: frame.width + 40,
-            height: frame.height + 50
+            height: frame.height + 70
         )
         return hitFrame.contains(mouseLocation)
     }

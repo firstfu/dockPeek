@@ -52,9 +52,12 @@ final class WindowManager {
 
             let title = windowDict[kCGWindowName as String] as? String
             let isOnScreen = windowDict[kCGWindowIsOnscreen as String] as? Bool ?? false
+            let hasCGTitle = title != nil && !title!.isEmpty
 
-            // Off-screen windows must exist in SCShareableContent to be considered minimized.
-            let scWindow = isOnScreen ? nil : availableContent?.windows.first(where: { $0.windowID == windowID })
+            // SC lookup: only for off-screen windows (on-screen uses CG title only)
+            let scWindow: SCWindow? = !isOnScreen
+                ? availableContent?.windows.first(where: { $0.windowID == windowID })
+                : nil
 
             let isMinimized: Bool
             if !isOnScreen {
@@ -64,13 +67,21 @@ final class WindowManager {
                 isMinimized = false
             }
 
-            let thumbnail = await captureThumbnail(windowID: windowID, targetWidth: thumbnailWidth, availableContent: availableContent, isMinimized: isMinimized)
+            // On-screen ghost/helper windows (e.g. Xcode, Sublime Text): no CG title → skip
+            if !isMinimized && !hasCGTitle {
+                continue
+            }
 
-            // Ghost/helper windows (e.g. Spark): off-screen + no title + no thumbnail → skip.
-            // Real minimized windows without titles (e.g. Microsoft To Do) still produce thumbnails.
+            let thumbnail = await captureThumbnail(
+                windowID: windowID, targetWidth: thumbnailWidth,
+                availableContent: availableContent, isMinimized: isMinimized
+            )
+
+            // Off-screen ghost/helper windows: no title → skip
             if isMinimized {
-                let hasTitle = (title != nil && !title!.isEmpty) || (scWindow?.title != nil && !scWindow!.title!.isEmpty)
-                if !hasTitle && thumbnail == nil {
+                let hasSCTitle = scWindow?.title != nil && !scWindow!.title!.isEmpty
+                let hasTitle = hasCGTitle || hasSCTitle
+                if !hasTitle {
                     continue
                 }
             }
