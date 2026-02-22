@@ -102,19 +102,6 @@ struct WindowThumbnailCard: View {
                 }
                 .frame(width: thumbnailWidth, height: thumbnailHeight)
                 .clipShape(RoundedRectangle(cornerRadius: 6 * previewScale))
-
-
-                if isHovered {
-                    Button(action: { onClose?() }) {
-                        Image(systemName: "xmark.circle.fill")
-                            .font(.system(size: 16 * previewScale))
-                            .symbolRenderingMode(.palette)
-                            .foregroundStyle(.white, .red)
-                    }
-                    .buttonStyle(.plain)
-                    .padding(4 * previewScale)
-                    .transition(.opacity)
-                }
             }
 
             Text(windowInfo.displayTitle)
