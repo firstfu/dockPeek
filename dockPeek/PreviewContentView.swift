@@ -17,17 +17,22 @@ struct PreviewContentView: View {
     var onWindowClose: ((WindowInfo) -> Void)?
     var onQuitApp: (() -> Void)?
 
+    /// Dampened scale for fonts — grows at 40% of the overall scale rate
+    private var fontScale: CGFloat {
+        1.0 + (previewScale - 1.0) * 0.4
+    }
+
     var body: some View {
         VStack(alignment: .leading, spacing: 8 * previewScale) {
             // Title bar
             HStack {
                 Text(appName)
-                    .font(.system(size: 13 * previewScale, weight: .semibold))
+                    .font(.system(size: 13 * fontScale, weight: .semibold))
                     .foregroundStyle(.primary)
                 Spacer()
                 Button(action: { onQuitApp?() }) {
                     Image(systemName: "xmark.circle.fill")
-                        .font(.system(size: 14 * previewScale))
+                        .font(.system(size: 14 * fontScale))
                         .foregroundStyle(.secondary)
                 }
                 .buttonStyle(.plain)
@@ -38,7 +43,7 @@ struct PreviewContentView: View {
 
             if windows.isEmpty {
                 Text("No windows open")
-                    .font(.system(size: 12 * previewScale))
+                    .font(.system(size: 12 * fontScale))
                     .foregroundStyle(.secondary)
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 20 * previewScale)
@@ -75,6 +80,11 @@ struct WindowThumbnailCard: View {
     var onClose: (() -> Void)?
     @State private var isHovered = false
 
+    /// Dampened scale for fonts — grows at 40% of the overall scale rate
+    private var fontScale: CGFloat {
+        1.0 + (previewScale - 1.0) * 0.4
+    }
+
     private var thumbnailHeight: CGFloat {
         guard windowInfo.bounds.width > 0 else { return thumbnailWidth * 0.6 }
         let aspect = windowInfo.bounds.height / windowInfo.bounds.width
@@ -95,7 +105,7 @@ struct WindowThumbnailCard: View {
                             .fill(.quaternary)
                             .overlay {
                                 Image(systemName: "macwindow")
-                                    .font(.system(size: 24 * previewScale))
+                                    .font(.system(size: 24 * fontScale))
                                     .foregroundStyle(.tertiary)
                             }
                     }
@@ -105,7 +115,7 @@ struct WindowThumbnailCard: View {
             }
 
             Text(windowInfo.displayTitle)
-                .font(.system(size: 11 * previewScale))
+                .font(.system(size: 11 * fontScale))
                 .foregroundStyle(.secondary)
                 .lineLimit(1)
                 .frame(width: thumbnailWidth)
