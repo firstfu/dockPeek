@@ -60,6 +60,8 @@ dockPeekApp (@main, SwiftUI App)
 - **`@Observable` (Observation framework)**: Used by `SettingsManager` and `PermissionManager` — not Combine
 - **Window actions via AX API**: `WindowManager` handles activate (raise + unminimize), close (press AX close button), quit (`NSRunningApplication.terminate`)
 - **Logging**: All modules use `os.Logger` with subsystem `com.firstfu.com.dockPeek` and per-class category
+- **SettingsView activation policy switch**: Opens as `.regular` (shows in Dock/taskbar) via `NSApp.setActivationPolicy(.regular)` on appear, reverts to `.accessory` on disappear — necessary for menu bar agent apps to properly display a Settings window
+- **Launch at Login**: Uses `SMAppService.mainApp.register()/unregister()` in `SettingsView`
 
 ### Coordinate System Gotcha
 
@@ -75,7 +77,9 @@ Conversion formula: `quartzY = primaryScreenHeight - cocoaY`. This appears in `D
 - Layer must be `0`, minimum bounds `50×50`, alpha ≥ `0.01`
 - On-screen windows without a CG title → skipped (ghost/helper)
 - Off-screen windows must exist in `SCShareableContent` → treated as minimized
-- Off-screen windows with no title AND no capturable thumbnail → skipped
+- Off-screen windows with no title (neither CG nor SC) → skipped
+- `SCShareableContent` is fetched once per `fetchWindows` call (not per-window) for performance
+- Thumbnail capture via `SCScreenshotManager.captureImage` accounts for `backingScaleFactor` (Retina)
 
 ### DockWatcher App Resolution
 
@@ -89,7 +93,7 @@ Conversion formula: `quartzY = primaryScreenHeight - cocoaY`. This appears in `D
 
 Panel dismissal uses a debounced `DispatchWorkItem` pattern in `AppDelegate`:
 - `onHoverEnd` schedules a 300ms delayed dismiss
-- Before dismissing, checks `PreviewPanel.containsMouse()` (uses a generous 60pt bottom padding to bridge the Dock-to-panel gap)
+- Before dismissing, checks `PreviewPanel.containsMouse()` — uses asymmetric hit padding: 20pt horizontal, 60pt bottom (bridges Dock-to-panel gap), 10pt top
 - New `onHoverApp` cancels any pending dismiss
 - `PreviewPanel` also runs its own mouse monitor (started 500ms after show) for independent dismissal when cursor leaves the panel area
 
@@ -107,8 +111,9 @@ Uses `PBXFileSystemSynchronizedRootGroup` — any `.swift` file placed in `dockP
 ## Swift Concurrency
 
 - `SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor` (app target only) — all types default to `@MainActor`
-- `SWIFT_APPROACHABLE_CONCURRENCY = YES` — Swift 6 concurrency safety
-- Use `nonisolated` explicitly for background work
+- `SWIFT_APPROACHABLE_CONCURRENCY = YES` — Swift 6 concurrency safety (enabled in all targets)
+- Test targets do **not** have `SWIFT_DEFAULT_ACTOR_ISOLATION` — test code does not default to `@MainActor`
+- Use `nonisolated` explicitly for background work in the app target
 - `WindowManager.fetchWindows` is `async` — called via `Task { }` from `AppDelegate`
 
 ## Code Style
