@@ -83,11 +83,13 @@ struct SettingsView: View {
             .offset(y: -10)
 
             VStack(spacing: 8) {
-                Image(nsImage: NSApp.applicationIconImage)
-                    .resizable()
-                    .frame(width: 60, height: 60)
-                    .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
-                    .shadow(color: .black.opacity(0.35), radius: 8, y: 4)
+                if let icon = NSImage(named: "AppIcon") {
+                    Image(nsImage: icon)
+                        .resizable()
+                        .interpolation(.high)
+                        .frame(width: 60, height: 60)
+                        .shadow(color: .black.opacity(0.35), radius: 8, y: 4)
+                }
 
                 Text("DockPeek")
                     .font(.system(size: 20, weight: .bold, design: .rounded))
