@@ -51,8 +51,9 @@ final class WindowManager {
             let isOnScreen = windowDict[kCGWindowIsOnscreen as String] as? Bool ?? false
             let hasCGTitle = title != nil && !title!.isEmpty
 
-            // SC lookup: only for off-screen windows (on-screen uses CG title only)
-            let scWindow: SCWindow? = !isOnScreen
+            // SC lookup: off-screen windows + on-screen windows without CG title (e.g. Catalyst apps)
+            let needsSCLookup = !isOnScreen || !hasCGTitle
+            let scWindow: SCWindow? = needsSCLookup
                 ? availableContent?.windows.first(where: { $0.windowID == windowID })
                 : nil
 
@@ -64,8 +65,9 @@ final class WindowManager {
                 isMinimized = false
             }
 
-            // On-screen ghost/helper windows (e.g. Xcode, Sublime Text): no CG title → skip
-            if !isMinimized && !hasCGTitle {
+            // On-screen ghost/helper windows (e.g. Xcode, Sublime Text): no CG title and not in SC → skip
+            // Catalyst apps (e.g. Microsoft To Do) have no CG title but exist in SCShareableContent
+            if !isMinimized && !hasCGTitle && scWindow == nil {
                 continue
             }
 
@@ -83,10 +85,12 @@ final class WindowManager {
                 }
             }
 
+            let effectiveTitle = (hasCGTitle ? title : scWindow?.title) ?? title
+
             let info = WindowInfo(
                 id: windowID,
                 ownerPID: ownerPID,
-                title: title,
+                title: effectiveTitle,
                 bounds: bounds,
                 isMinimized: isMinimized,
                 thumbnail: thumbnail
