@@ -59,7 +59,7 @@ dockPeekApp (@main, SwiftUI App)
 - **DI for testability**: `SettingsManager(defaults:)` accepts custom `UserDefaults` instance
 - **`@Observable` (Observation framework)**: Used by `SettingsManager` and `PermissionManager` — not Combine
 - **Window actions via AX API**: `WindowManager` handles activate (raise + unminimize), close (press AX close button), quit (`NSRunningApplication.terminate`)
-- **Logging**: All modules use `os.Logger` with subsystem `com.firstfu.com.dockPeek` and per-class category
+- **Logging**: All modules use `os.Logger` with subsystem `com.firstfu.dockPeek` and per-class category
 - **SettingsView activation policy switch**: Opens as `.regular` (shows in Dock/taskbar) via `NSApp.setActivationPolicy(.regular)` on appear, reverts to `.accessory` on disappear — necessary for menu bar agent apps to properly display a Settings window
 - **Launch at Login**: Uses `SMAppService.mainApp.register()/unregister()` in `SettingsView`
 
@@ -133,6 +133,6 @@ Uses `PBXFileSystemSynchronizedRootGroup` — any `.swift` file placed in `dockP
 - App Sandbox: **disabled** (required for Accessibility API + CGWindowList access)
 - Hardened Runtime: **enabled** (required for notarization)
 - `LSUIElement = YES` — hides from Dock, runs as Menu Bar agent app
-- Bundle ID: `com.firstfu.com.dockPeek`
+- Bundle ID: `com.firstfu.dockPeek`
 - Requires **Accessibility permission** for Dock monitoring and window operations
 - Requires **Screen Recording permission** for ScreenCaptureKit thumbnails

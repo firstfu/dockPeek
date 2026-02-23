@@ -1,2 +1,6 @@
 *.xcuserstate
 .worktrees/
+
+## User settings
+xcuserdata/
+*.dmg
